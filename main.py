@@ -13,7 +13,7 @@ import argparse
 np.random.seed(0)
 sample = []
 
-with open('E:\my gitprojects\my_self_driving _car\driving_log.csv') as csvfile:
+with open('driving_log.csv') as csvfile:
     reader = csv.reader(csvfile)
     next(reader, None)
     for line in reader:
