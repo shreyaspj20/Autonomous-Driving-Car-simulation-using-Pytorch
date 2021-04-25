@@ -9,6 +9,7 @@ import cv2
 from tqdm import tqdm
 from train_model import DriverNet
 import argparse
+from torchvision import transforms
 
 np.random.seed(0)
 sample = []
@@ -37,8 +38,9 @@ train_samples, validation_samples = data.random_split(sample, lengths=[train_len
 
 class Dataset(data.Dataset):
 
-    def __init__(self, samples):
+    def __init__(self, samples, transform=None):
         self.samples = samples
+        self.transform = transform
 
     def __getitem__(self, index):
         batch_samples = self.samples[index]
@@ -46,7 +48,9 @@ class Dataset(data.Dataset):
         center_img, steering_angle_center = augment(batch_samples[0], steering_angle)
         left_img, steering_angle_left = augment(batch_samples[1], steering_angle + 0.4)
         right_img, steering_angle_right = augment(batch_samples[2], steering_angle - 0.4)
-
+        center_img = self.transform(center_img)
+        left_img = self.transform(left_img)
+        right_img = self.transform(right_img)
         return (center_img, steering_angle_center), (left_img, steering_angle_left), (right_img, steering_angle_right)
 
     def __len__(self):
@@ -57,10 +61,17 @@ params = {'batch_size': 32,
           'shuffle': True,
           'num_workers': 4}
 
-training_set = Dataset(train_samples)
+
+def _my_normalization(x):
+    return x / 127.5 - 1.0
+
+
+transformations = transforms.Compose([transforms.Lambda(_my_normalization)])
+
+training_set = Dataset(train_samples, transformations)
 training_generator = DataLoader(training_set, **params)
 
-validation_set = Dataset(validation_samples)
+validation_set = Dataset(validation_samples, transformations)
 validation_generator = DataLoader(validation_set, **params)
 
 
@@ -88,7 +99,6 @@ def build_model():
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 
 def toDevice(datas, device):
     imgs, angles = datas
